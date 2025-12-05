@@ -206,10 +206,12 @@
         <div id="sidebar">
             <div class="control-section">
                 <h3>Đơn vị hành chính</h3>
+                <input type="text" id="search-donvi" class="search-box" placeholder="Tìm kiếm đơn vị...">
                 <ul id="donvi-list" style="list-style:none; padding-left:0;"></ul>
             </div>
             <div class="control-section">
                 <h3>Ranh giới hành chính</h3>
+                <input type="text" id="search-ranhgioi" class="search-box" placeholder="Tìm kiếm ranh giới...">
                 <div class="layer-control">
                     <label><input type="checkbox" id="layer-truoc" checked> Ranh giới trước sáp nhập</label>
                     <label><input type="checkbox" id="layer-sau" checked> Ranh giới sau sáp nhập</label>
@@ -217,6 +219,7 @@
             </div>
             <div class="control-section">
                 <h3>Quyết định sáp nhập</h3>
+                <input type="text" id="search-quyetdinh" class="search-box" placeholder="Tìm kiếm quyết định...">
                 <div style="font-size:14px; line-height:1.7;">
                     <strong>Nghị quyết số: 202/2025/QH15</strong><br>
                     <span>Ngày ban hành: 12/06/2025</span><br>
@@ -310,6 +313,35 @@
         }
     }
     fetchDonViHanhChinh();
+
+    // Tra cứu nâng cao đơn vị hành chính
+    document.getElementById('search-donvi').addEventListener('input', function(e) {
+        const keyword = e.target.value.trim().toLowerCase();
+        const list = document.getElementById('donvi-list');
+        Array.from(list.children).forEach(li => {
+            const text = li.textContent.toLowerCase();
+            li.style.display = text.includes(keyword) ? '' : 'none';
+        });
+    });
+
+    // Tra cứu nâng cao ranh giới
+    document.getElementById('search-ranhgioi').addEventListener('input', function(e) {
+        const keyword = e.target.value.trim().toLowerCase();
+        // Chỉ lọc popup, không ẩn layer trên bản đồ
+        // Nếu muốn lọc layer, cần xử lý lại fetchRanhGioi
+        // Hiện tại chỉ demo lọc popup
+        // ...
+    });
+
+    // Tra cứu nâng cao quyết định sáp nhập (chỉ lọc nội dung tĩnh)
+    document.getElementById('search-quyetdinh').addEventListener('input', function(e) {
+        const keyword = e.target.value.trim().toLowerCase();
+        const container = e.target.parentElement;
+        Array.from(container.querySelectorAll('ul li')).forEach(li => {
+            const text = li.textContent.toLowerCase();
+            li.style.display = text.includes(keyword) ? '' : 'none';
+        });
+    });
 
     // Fetch danh sách quyết định sáp nhập và hiển thị
     async function fetchQuyetDinhSapNhap() {
