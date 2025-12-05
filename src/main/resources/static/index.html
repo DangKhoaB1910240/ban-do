@@ -215,6 +215,23 @@
                     <label><input type="checkbox" id="layer-sau" checked> Ranh giới sau sáp nhập</label>
                 </div>
             </div>
+            <div class="control-section">
+                <h3>Quyết định sáp nhập</h3>
+                <div style="font-size:14px; line-height:1.7;">
+                    <strong>Nghị quyết số: 202/2025/QH15</strong><br>
+                    <span>Ngày ban hành: 12/06/2025</span><br>
+                    <span><u>Danh sách các tỉnh, thành phố sau sáp nhập:</u></span>
+                    <ul style="margin-left:18px;">
+                        <li><strong>Tỉnh Vĩnh Long:</strong> Gồm tỉnh Vĩnh Long, Bến Tre và Trà Vinh.</li>
+                        <li><strong>Tỉnh Đồng Tháp:</strong> Gồm tỉnh Tiền Giang và Đồng Tháp.</li>
+                        <li><strong>Tỉnh Cà Mau:</strong> Gồm tỉnh Bạc Liêu và Cà Mau.</li>
+                        <li><strong>Tỉnh An Giang:</strong> Gồm tỉnh Kiên Giang và An Giang.</li>
+                        <li><strong>Thành phố Cần Thơ:</strong> Gồm TP. Cần Thơ, Sóc Trăng và Hậu Giang.</li>
+                        <li><strong>Tỉnh Tây Ninh:</strong> Gồm tỉnh Tây Ninh và Long An.</li>
+                    </ul>
+                    <a href="/202qh.signed.pdf" download class="btn" style="margin-top:10px;display:inline-block;text-align:center;">Tải file nghị quyết PDF</a>
+                </div>
+            </div>
         </div>
         <div id="map"></div>
     </div>
@@ -293,6 +310,51 @@
         }
     }
     fetchDonViHanhChinh();
+
+    // Fetch danh sách quyết định sáp nhập và hiển thị
+    async function fetchQuyetDinhSapNhap() {
+        try {
+            const res = await fetch('/api/quyetdinhsapnhap');
+            const data = [
+  {
+    "id": 1,
+    "soQuyetDinh": "123/QĐ-UBND",
+    "ngayBanHanh": "2023-05-15T00:00:00.000+00:00",
+    "noiDung": "Sáp nhập xã A vào xã B.",
+    "anhHuong": "Xã A, Xã B",
+    "fileDinhKem": null,
+    "donViLienQuan": "UBND tỉnh An Giang",
+    "ghiChu": "Không"
+  },
+  {
+    "id": 2,
+    "soQuyetDinh": "456/QĐ-UBND",
+    "ngayBanHanh": "2024-01-10T00:00:00.000+00:00",
+    "noiDung": "Sáp nhập huyện X vào huyện Y.",
+    "anhHuong": "Huyện X, Huyện Y",
+    "fileDinhKem": "quyetdinh456.pdf",
+    "donViLienQuan": "UBND tỉnh Đồng Tháp",
+    "ghiChu": ""
+  }
+];
+            const list = document.getElementById('quyetdinh-list');
+            list.innerHTML = '';
+            if (Array.isArray(data) && data.length > 0) {
+                data.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${item.soQuyetDinh || ''}</strong> - <span>${item.ngayBanHanh ? new Date(item.ngayBanHanh).toLocaleDateString('vi-VN') : ''}</span><br>
+                        <span>${item.noiDung || ''}</span>`;
+                    li.style.marginBottom = '10px';
+                    list.appendChild(li);
+                });
+            } else {
+                list.innerHTML = '<li>Không có dữ liệu</li>';
+            }
+        } catch (e) {
+            document.getElementById('quyetdinh-list').innerHTML = '<li>Lỗi tải dữ liệu</li>';
+        }
+    }
+    fetchQuyetDinhSapNhap();
     </script>
 </body>
 </html>
