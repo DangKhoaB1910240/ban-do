@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGIS Quản lý Địa giới Sau Sáp nhập - ĐBSCL</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #header h1 {
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        #header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        #main-container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+        #sidebar {
+            width: 320px;
+            background: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+        #map {
+            flex: 1;
+            position: relative;
+        }
+        .control-section {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .control-section h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+        .layer-control {
+            margin: 10px 0;
+        }
+        .layer-control label {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        .layer-control label:hover {
+            background: #f0f0f0;
+        }
+        .layer-control input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+        }
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .search-result-item {
+            padding: 10px;
+            background: white;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s;
+        }
+        .search-result-item:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+            transform: translateX(3px);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .stat-card h4 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .stat-card .number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .leaflet-popup-content {
+            margin: 15px;
+            min-width: 200px;
+        }
+        .popup-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .popup-info {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        .popup-info strong {
+            color: #333;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .status-merged {
+            background: #ffe0b2;
+            color: #e65100;
+        }
+        .status-new {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+        .status-unchanged {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+    </style>
+    <style>
+        /* ...existing code... */
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🗺️ Hệ thống WebGIS Quản lý Địa giới Sau Sáp nhập</h1>
+        <p>Khu vực: Đồng bằng Sông Cửu Long | Cập nhật: Tháng 11/2025</p>
+    </div>
+    <div id="main-container">
+        <div id="sidebar">
+            <div class="control-section">
+                <h3>Đơn vị hành chính</h3>
+                <ul id="donvi-list" style="list-style:none; padding-left:0;"></ul>
+            </div>
+            <div class="control-section">
+                <h3>Ranh giới hành chính</h3>
+                <div class="layer-control">
+                    <label><input type="checkbox" id="layer-truoc" checked> Ranh giới trước sáp nhập</label>
+                    <label><input type="checkbox" id="layer-sau" checked> Ranh giới sau sáp nhập</label>
+                </div>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+    // Khởi tạo bản đồ
+    const map = L.map('map').setView([10.5, 105.5], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Layer ranh giới
+    let layerTruoc = L.layerGroup().addTo(map);
+    let layerSau = L.layerGroup().addTo(map);
+
+    // Fetch ranh giới hành chính từ API và hiển thị
+    async function fetchRanhGioi() {
+        const res = await fetch('/api/ranhgioi');
+        const data = await res.json();
+        layerTruoc.clearLayers();
+        layerSau.clearLayers();
+        data.forEach(item => {
+            if (!item.geometryJson) return;
+            let geojson = null;
+            try { geojson = JSON.parse(item.geometryJson); } catch {}
+            if (!geojson) return;
+            const style = {
+                color: item.trangThai === 'sau' ? '#e65100' : '#1565c0',
+                weight: 2,
+                fillOpacity: 0.2
+            };
+            const gjLayer = L.geoJSON(geojson, { style });
+            gjLayer.bindPopup(`<strong>${item.tenDonVi || ''}</strong><br>Loại: ${item.loai || ''}<br>Năm: ${item.nam || ''}`);
+            if (item.trangThai === 'sau') {
+                layerSau.addLayer(gjLayer);
+            } else {
+                layerTruoc.addLayer(gjLayer);
+            }
+        });
+    }
+    fetchRanhGioi();
+
+    // Bật/tắt lớp ranh giới
+    document.getElementById('layer-truoc').addEventListener('change', function(e) {
+        if (e.target.checked) map.addLayer(layerTruoc);
+        else map.removeLayer(layerTruoc);
+    });
+    document.getElementById('layer-sau').addEventListener('change', function(e) {
+        if (e.target.checked) map.addLayer(layerSau);
+        else map.removeLayer(layerSau);
+    });
+
+    // Fetch dữ liệu đơn vị hành chính từ API và hiển thị danh sách
+    async function fetchDonViHanhChinh() {
+        try {
+            const res = await fetch('/api/donvihanhchinh');
+            const data = await res.json(); 
+            const list = document.getElementById('donvi-list');
+            list.innerHTML = '';
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<strong>${item.tenTinh || ''}${item.tenXa ? ' - ' + item.tenXa : ''}</strong><br>
+                        <span>Loại: ${item.loai || ''}</span><br>
+                        <span>Diện tích: ${item.dienTichKm2 || ''} km²</span><br>
+                        <span>Dân số: ${item.danSo || ''}</span>`;
+                    list.appendChild(li);
+                });
+            } else {
+                list.innerHTML = '<li>Không có dữ liệu</li>';
+            }
+        } catch (e) {
+            document.getElementById('donvi-list').innerHTML = '<li>Lỗi tải dữ liệu</li>';
+        }
+    }
+    fetchDonViHanhChinh();
+    </script>
+</body>
+</html>

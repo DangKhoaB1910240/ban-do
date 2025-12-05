@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGIS Quản lý Địa giới Sau Sáp nhập - ĐBSCL</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #header h1 {
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        #header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        #main-container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+        #sidebar {
+            width: 320px;
+            background: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+        #map {
+            flex: 1;
+            position: relative;
+        }
+        .control-section {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .control-section h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+        .layer-control {
+            margin: 10px 0;
+        }
+        .layer-control label {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        .layer-control label:hover {
+            background: #f0f0f0;
+        }
+        .layer-control input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+        }
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .search-result-item {
+            padding: 10px;
+            background: white;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s;
+        }
+        .search-result-item:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+            transform: translateX(3px);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .stat-card h4 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .stat-card .number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .leaflet-popup-content {
+            margin: 15px;
+            min-width: 200px;
+        }
+        .popup-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .popup-info {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        .popup-info strong {
+            color: #333;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .status-merged {
+            background: #ffe0b2;
+            color: #e65100;
+        }
+        .status-new {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+        .status-unchanged {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🗺️ Hệ thống WebGIS Quản lý Địa giới Sau Sáp nhập</h1>
+        <p>Khu vực: Đồng bằng Sông Cửu Long | Cập nhật: Tháng 11/2025</p>
+    </div>
+
+    <div id="main-container">
+        <div id="sidebar">
+            <!-- Tìm kiếm -->
+            <div class="control-section">
+                <h3>🔍 Tra cứu địa phương</h3>
+                <input type="text" id="searchBox" class="search-box" placeholder="Nhập tên xã, huyện, tỉnh...">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <!-- Timeline slider -->
+            <div class="control-section">
+                <h3>🕒 Xem biến động theo thời gian</h3>
+                <input type="range" id="timelineSlider" min="2020" max="2025" value="2025" step="1">
+                <div id="timelineValue">2025</div>
+            </div>
+
+            <!-- Điều khiển lớp -->
+            <div class="control-section">
+                <h3>📊 Hiển thị lớp bản đồ</h3>
+                <div class="layer-control">
+                    <label>
+                        <input type="checkbox" id="layerOld" checked>
+                        <span>Ranh giới trước sáp nhập (2020)</span>
+                    </label>
+                </div>
+                <div class="layer-control">
+                    <label>
+                        <input type="checkbox" id="layerNew" checked>
+                        <span>Ranh giới sau sáp nhập (2025)</span>
+                    </label>
+                </div>
+                <div class="layer-control">
+                    <label>
+                        <input type="checkbox" id="layerLabels" checked>
+                        <span>Tên địa phương</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Chú giải -->
+            <div class="control-section">
+                <h3>📌 Chú giải</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(255, 0, 0, 0.3); border-color: #ff0000;"></div>
+                    <span>Trước sáp nhập (2020)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(0, 123, 255, 0.3); border-color: #007bff;"></div>
+                    <span>Sau sáp nhập (2025)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(40, 167, 69, 0.3); border-color: #28a745;"></div>
+                    <span>Đơn vị mới hợp nhất</span>
+                </div>
+            </div>
+
+            <!-- Thống kê -->
+            <div class="control-section">
+                <h3>📈 Thống kê tổng quan</h3>
+                <div class="stat-card">
+                    <h4>Số xã bị sáp nhập</h4>
+                    <div class="number">48 xã</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <h4>Số huyện bị sáp nhập</h4>
+                    <div class="number">12 huyện</div>
+                </div>
+                <button class="btn" onclick="exportReport()">📄 Xuất báo cáo</button>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Khởi tạo bản đồ
+        const map = L.map('map').setView([10.0341, 105.7825], 9); // Trung tâm ĐBSCL
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+    </script>
+    <script>
+        // Hiển thị giá trị năm khi kéo slider
+        const slider = document.getElementById('timelineSlider');
+        const timelineValue = document.getElementById('timelineValue');
+        if (slider && timelineValue) {
+            slider.addEventListener('input', function() {
+                timelineValue.textContent = this.value;
+            });
+        }
+    </script>
+</body>
+</html>
