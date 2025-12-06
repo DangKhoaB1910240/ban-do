@@ -241,113 +241,160 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
-    // Khởi tạo bản đồ
-    const map = L.map('map').setView([10.5, 105.5], 8);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    // Layer ranh giới
-    let layerTruoc = L.layerGroup().addTo(map);
-    let layerSau = L.layerGroup().addTo(map);
-
-    // Fetch ranh giới hành chính từ API và hiển thị
-    async function fetchRanhGioi() {
-        const res = await fetch('/api/ranhgioi');
-        const data = await res.json();
-        layerTruoc.clearLayers();
-        layerSau.clearLayers();
-        data.forEach(item => {
-            if (!item.geometryJson) return;
-            let geojson = null;
-            try { geojson = JSON.parse(item.geometryJson); } catch {}
-            if (!geojson) return;
-            const style = {
-                color: item.trangThai === 'sau' ? '#e65100' : '#1565c0',
-                weight: 2,
-                fillOpacity: 0.2
-            };
-            const gjLayer = L.geoJSON(geojson, { style });
-            gjLayer.bindPopup(`<strong>${item.tenDonVi || ''}</strong><br>Loại: ${item.loai || ''}<br>Năm: ${item.nam || ''}`);
-            if (item.trangThai === 'sau') {
-                layerSau.addLayer(gjLayer);
-            } else {
-                layerTruoc.addLayer(gjLayer);
-            }
-        });
-    }
-    fetchRanhGioi();
-
-    // Bật/tắt lớp ranh giới
-    document.getElementById('layer-truoc').addEventListener('change', function(e) {
-        if (e.target.checked) map.addLayer(layerTruoc);
-        else map.removeLayer(layerTruoc);
-    });
-    document.getElementById('layer-sau').addEventListener('change', function(e) {
-        if (e.target.checked) map.addLayer(layerSau);
-        else map.removeLayer(layerSau);
-    });
-
-    // Fetch dữ liệu đơn vị hành chính từ API và hiển thị danh sách
-    async function fetchDonViHanhChinh() {
-        try {
-            const res = await fetch('/api/donvihanhchinh');
-            const data = await res.json(); 
-            const list = document.getElementById('donvi-list');
-            list.innerHTML = '';
-            if (Array.isArray(data)) {
-                data.forEach(item => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<strong>${item.tenTinh || ''}${item.tenXa ? ' - ' + item.tenXa : ''}</strong><br>
-                        <span>Loại: ${item.loai || ''}</span><br>
-                        <span>Diện tích: ${item.dienTichKm2 || ''} km²</span><br>
-                        <span>Dân số: ${item.danSo || ''}</span>`;
-                    list.appendChild(li);
-                });
-            } else {
-                list.innerHTML = '<li>Không có dữ liệu</li>';
-            }
-        } catch (e) {
-            document.getElementById('donvi-list').innerHTML = '<li>Lỗi tải dữ liệu</li>';
+    // Đảm bảo phần tử #map có chiều cao để nhận sự kiện click
+    document.addEventListener('DOMContentLoaded', function() {
+        var mapDiv = document.getElementById('map');
+        if (mapDiv) {
+            mapDiv.style.height = '100vh';
         }
-    }
-    fetchDonViHanhChinh();
 
-    // Tra cứu nâng cao đơn vị hành chính
-    document.getElementById('search-donvi').addEventListener('input', function(e) {
-        const keyword = e.target.value.trim().toLowerCase();
-        const list = document.getElementById('donvi-list');
-        Array.from(list.children).forEach(li => {
-            const text = li.textContent.toLowerCase();
-            li.style.display = text.includes(keyword) ? '' : 'none';
+        // Khởi tạo bản đồ
+        const map = L.map('map').setView([10.5, 105.5], 8);
+        console.log('Map initialized', map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Popup tra cứu địa chính theo vị trí
+        map.on('click', async function(e) {
+            console.log('Map clicked', e);
+            const { lat, lng } = e.latlng;
+            const popup = L.popup()
+                .setLatLng([lat, lng])
+                .setContent('<div style="min-width:220px;">Đang tra cứu thông tin địa chính...</div>')
+                .openOn(map);
+            try {
+                const apiUrl = `https://vn2000.vn/api/thongtindiachinh?vido=${lat}&kinhdo=${lng}`;
+                const res = await fetch(apiUrl);
+                console.log("res: ",res)
+                const json = await res.json();
+                if (json.success && json.data) {
+                    const dSau = json.data.diachinh_sausapnhap?.properties || {};
+                    const dTruoc = json.data.diachinh_truocsapnhap?.properties || {};
+                    let html = `<div style='font-size:14px;'><b>Tra cứu địa chính</b><br><br>`;
+                    html += `<b>Vị trí:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>`;
+                    html += `<b>Sau sáp nhập:</b><br>`;
+                    html += `<span>- Tỉnh: ${dSau.ten_tinh || ''}</span><br>`;
+                    html += `<span>- Xã: ${dSau.ten_xa || ''}</span><br>`;
+                    html += `<span>- Loại: ${dSau.loai || ''}</span><br>`;
+                    html += `<span>- Diện tích: ${dSau.dtich_km2 || ''} km²</span><br>`;
+                    html += `<span>- Dân số: ${dSau.dan_so || ''}</span><br>`;
+                    html += `<span>- Sáp nhập: ${dSau.sap_nhap || ''}</span><br><br>`;
+                    html += `<b>Trước sáp nhập:</b><br>`;
+                    html += `<span>- Tỉnh: ${dTruoc.ten_tinh || ''}</span><br>`;
+                    html += `<span>- Xã: ${dTruoc.ten_xa || ''}</span><br>`;
+                    html += `<span>- Loại: ${dTruoc.loai || ''}</span><br>`;
+                    html += `<span>- Huyện: ${dTruoc.ten_huyen || ''}</span><br>`;
+                    popup.setContent(html);
+                } else {
+                    popup.setContent('<div style="min-width:220px;">Không có dữ liệu địa chính tại vị trí này.</div>');
+                }
+            } catch {
+                popup.setContent('<div style="min-width:220px;">Lỗi tra cứu dữ liệu!</div>');
+            }
         });
-    });
 
-    // Tra cứu nâng cao ranh giới
-    document.getElementById('search-ranhgioi').addEventListener('input', function(e) {
-        const keyword = e.target.value.trim().toLowerCase();
-        // Chỉ lọc popup, không ẩn layer trên bản đồ
-        // Nếu muốn lọc layer, cần xử lý lại fetchRanhGioi
-        // Hiện tại chỉ demo lọc popup
-        // ...
-    });
+        // Layer ranh giới
+        let layerTruoc = L.layerGroup().addTo(map);
+        let layerSau = L.layerGroup().addTo(map);
 
-    // Tra cứu nâng cao quyết định sáp nhập (chỉ lọc nội dung tĩnh)
-    document.getElementById('search-quyetdinh').addEventListener('input', function(e) {
-        const keyword = e.target.value.trim().toLowerCase();
-        const container = e.target.parentElement;
-        Array.from(container.querySelectorAll('ul li')).forEach(li => {
-            const text = li.textContent.toLowerCase();
-            li.style.display = text.includes(keyword) ? '' : 'none';
+        // Fetch ranh giới hành chính từ API và hiển thị
+        async function fetchRanhGioi() {
+            const res = await fetch('/api/ranhgioi');
+            const data = await res.json();
+            layerTruoc.clearLayers();
+            layerSau.clearLayers();
+            data.forEach(item => {
+                if (!item.geometryJson) return;
+                let geojson = null;
+                try { geojson = JSON.parse(item.geometryJson); } catch {}
+                if (!geojson) return;
+                const style = {
+                    color: item.trangThai === 'sau' ? '#e65100' : '#1565c0',
+                    weight: 2,
+                    fillOpacity: 0.2
+                };
+                const gjLayer = L.geoJSON(geojson, { style });
+                gjLayer.bindPopup(`<strong>${item.tenDonVi || ''}</strong><br>Loại: ${item.loai || ''}<br>Năm: ${item.nam || ''}`);
+                if (item.trangThai === 'sau') {
+                    layerSau.addLayer(gjLayer);
+                } else {
+                    layerTruoc.addLayer(gjLayer);
+                }
+            });
+        }
+        fetchRanhGioi();
+
+        // Bật/tắt lớp ranh giới
+        document.getElementById('layer-truoc').addEventListener('change', function(e) {
+            if (e.target.checked) map.addLayer(layerTruoc);
+            else map.removeLayer(layerTruoc);
         });
-    });
+        document.getElementById('layer-sau').addEventListener('change', function(e) {
+            if (e.target.checked) map.addLayer(layerSau);
+            else map.removeLayer(layerSau);
+        });
 
-    // Fetch danh sách quyết định sáp nhập và hiển thị
-    async function fetchQuyetDinhSapNhap() {
-        try {
-            const res = await fetch('/api/quyetdinhsapnhap');
-            const data = [
+        // Fetch dữ liệu đơn vị hành chính từ API và hiển thị danh sách
+        async function fetchDonViHanhChinh() {
+            try {
+                const res = await fetch('/api/donvihanhchinh');
+                const data = await res.json(); 
+                const list = document.getElementById('donvi-list');
+                list.innerHTML = '';
+                if (Array.isArray(data)) {
+                    data.forEach(item => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<strong>${item.tenTinh || ''}${item.tenXa ? ' - ' + item.tenXa : ''}</strong><br>
+                            <span>Loại: ${item.loai || ''}</span><br>
+                            <span>Diện tích: ${item.dienTichKm2 || ''} km²</span><br>
+                            <span>Dân số: ${item.danSo || ''}</span>`;
+                        list.appendChild(li);
+                    });
+                } else {
+                    list.innerHTML = '<li>Không có dữ liệu</li>';
+                }
+            } catch (e) {
+                document.getElementById('donvi-list').innerHTML = '<li>Lỗi tải dữ liệu</li>';
+            }
+        }
+        fetchDonViHanhChinh();
+
+        // Tra cứu nâng cao đơn vị hành chính
+        document.getElementById('search-donvi').addEventListener('input', function(e) {
+            const keyword = e.target.value.trim().toLowerCase();
+            const list = document.getElementById('donvi-list');
+            Array.from(list.children).forEach(li => {
+                const text = li.textContent.toLowerCase();
+                li.style.display = text.includes(keyword) ? '' : 'none';
+            });
+        });
+
+        // Tra cứu nâng cao ranh giới
+        document.getElementById('search-ranhgioi').addEventListener('input', function(e) {
+            const keyword = e.target.value.trim().toLowerCase();
+            // Chỉ lọc popup, không ẩn layer trên bản đồ
+            // Nếu muốn lọc layer, cần xử lý lại fetchRanhGioi
+            // Hiện tại chỉ demo lọc popup
+            // ...
+        });
+
+        // Tra cứu nâng cao quyết định sáp nhập (chỉ lọc nội dung tĩnh)
+        document.getElementById('search-quyetdinh').addEventListener('input', function(e) {
+            const keyword = e.target.value.trim().toLowerCase();
+            const container = e.target.parentElement;
+            Array.from(container.querySelectorAll('ul li')).forEach(li => {
+                const text = li.textContent.toLowerCase();
+                li.style.display = text.includes(keyword) ? '' : 'none';
+            });
+        });
+
+        // Fetch danh sách quyết định sáp nhập và hiển thị
+        async function fetchQuyetDinhSapNhap() {
+            try {
+                const res = await fetch('/api/quyetdinhsapnhap');
+                const data = [
   {
     "id": 1,
     "soQuyetDinh": "123/QĐ-UBND",
@@ -369,24 +416,25 @@
     "ghiChu": ""
   }
 ];
-            const list = document.getElementById('quyetdinh-list');
-            list.innerHTML = '';
-            if (Array.isArray(data) && data.length > 0) {
-                data.forEach(item => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<strong>${item.soQuyetDinh || ''}</strong> - <span>${item.ngayBanHanh ? new Date(item.ngayBanHanh).toLocaleDateString('vi-VN') : ''}</span><br>
-                        <span>${item.noiDung || ''}</span>`;
-                    li.style.marginBottom = '10px';
-                    list.appendChild(li);
-                });
-            } else {
-                list.innerHTML = '<li>Không có dữ liệu</li>';
+                const list = document.getElementById('quyetdinh-list');
+                list.innerHTML = '';
+                if (Array.isArray(data) && data.length > 0) {
+                    data.forEach(item => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<strong>${item.soQuyetDinh || ''}</strong> - <span>${item.ngayBanHanh ? new Date(item.ngayBanHanh).toLocaleDateString('vi-VN') : ''}</span><br>
+                            <span>${item.noiDung || ''}</span>`;
+                        li.style.marginBottom = '10px';
+                        list.appendChild(li);
+                    });
+                } else {
+                    list.innerHTML = '<li>Không có dữ liệu</li>';
+                }
+            } catch (e) {
+                document.getElementById('quyetdinh-list').innerHTML = '<li>Lỗi tải dữ liệu</li>';
             }
-        } catch (e) {
-            document.getElementById('quyetdinh-list').innerHTML = '<li>Lỗi tải dữ liệu</li>';
         }
-    }
-    fetchQuyetDinhSapNhap();
+        fetchQuyetDinhSapNhap();
+    });
     </script>
 </body>
 </html>
