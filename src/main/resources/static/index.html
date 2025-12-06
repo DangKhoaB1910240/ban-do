@@ -204,6 +204,11 @@
     </div>
     <div id="main-container">
         <div id="sidebar">
+                    <div class="control-section" style="margin-bottom:12px;">
+                        <button id="btn-print-map" class="btn" style="margin-bottom:8px;">🖨️ In bản đồ</button>
+                        <button id="btn-share-link" class="btn" style="margin-bottom:8px;">🔗 Chia sẻ liên kết</button>
+                        <button id="btn-export-geojson" class="btn">⬇️ Export GeoJSON</button>
+                    </div>
             <div class="control-section">
                 <h3>Đơn vị hành chính</h3>
                 <input type="text" id="search-donvi" class="search-box" placeholder="Tìm kiếm đơn vị...">
@@ -243,6 +248,51 @@
     <script>
     // Đảm bảo phần tử #map có chiều cao để nhận sự kiện click
     document.addEventListener('DOMContentLoaded', function() {
+                // In bản đồ
+                document.getElementById('btn-print-map').addEventListener('click', function() {
+                    window.print();
+                });
+
+                // Chia sẻ liên kết
+                document.getElementById('btn-share-link').addEventListener('click', function() {
+                    const url = window.location.href;
+                    navigator.clipboard.writeText(url).then(function() {
+                        alert('Đã sao chép liên kết vào clipboard!');
+                    }, function() {
+                        alert('Không thể sao chép liên kết!');
+                    });
+                });
+
+                // Export dữ liệu GeoJSON (lấy từ layer ranh giới hiện tại)
+                document.getElementById('btn-export-geojson').addEventListener('click', async function() {
+                    try {
+                        const res = await fetch('/api/ranhgioi');
+                        const data = await res.json();
+                        const geojsonFeatures = [];
+                        data.forEach(item => {
+                            if (item.geometryJson) {
+                                let gj = null;
+                                try { gj = JSON.parse(item.geometryJson); } catch {}
+                                if (gj) geojsonFeatures.push(gj);
+                            }
+                        });
+                        const geojson = {
+                            type: 'FeatureCollection',
+                            features: geojsonFeatures
+                        };
+                        const blob = new Blob([JSON.stringify(geojson, null, 2)], {type: 'application/json'});
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'ranh_gioi_export.geojson';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    } catch (e) {
+                        alert('Lỗi export GeoJSON!');
+                    }
+                });
         var mapDiv = document.getElementById('map');
         if (mapDiv) {
             mapDiv.style.height = '100vh';
