@@ -205,6 +205,7 @@
     <div id="main-container">
         <div id="sidebar">
                     <div class="control-section" style="margin-bottom:12px;">
+                            <button id="btn-spatial-analysis" class="btn" style="margin-bottom:8px;background:#ff9800;">🧩 Phân tích không gian</button>
                         <button id="btn-print-map" class="btn" style="margin-bottom:8px;">🖨️ In bản đồ</button>
                         <button id="btn-share-link" class="btn" style="margin-bottom:8px;">🔗 Chia sẻ liên kết</button>
                         <button id="btn-export-geojson" class="btn">⬇️ Export GeoJSON</button>
@@ -248,6 +249,50 @@
     <script>
     // Đảm bảo phần tử #map có chiều cao để nhận sự kiện click
     document.addEventListener('DOMContentLoaded', function() {
+                        // Phân tích không gian
+                        let spatialLayers = [];
+                        document.getElementById('btn-spatial-analysis').addEventListener('click', async function() {
+                            // Xóa các lớp phân tích cũ
+                            spatialLayers.forEach(l => map.removeLayer(l));
+                            spatialLayers = [];
+                            try {
+                                const res = await fetch('/api/ranhgioi/phan-tich');
+                                const data = await res.json();
+                                if (!Array.isArray(data) || data.length === 0) {
+                                    alert('Không có dữ liệu phân tích!');
+                                    return;
+                                }
+                                data.forEach(item => {
+                                    // Vùng giao (intersection) - màu xanh lá
+                                    if (item.giaoGeoJson) {
+                                        let gj = null;
+                                        try { gj = JSON.parse(item.giaoGeoJson); } catch {}
+                                        if (gj && gj.type && gj.type !== 'GeometryCollection') {
+                                            const layer = L.geoJSON(gj, {
+                                                style: { color: '#43a047', weight: 2, fillOpacity: 0.3 }
+                                            }).addTo(map);
+                                            layer.bindPopup(`<b>${item.tenDonVi}</b><br>Vùng giao<br>Diện tích: ${item.areaGiao.toFixed(2)}`);
+                                            spatialLayers.push(layer);
+                                        }
+                                    }
+                                    // Vùng thay đổi (difference) - màu đỏ
+                                    if (item.thayDoiGeoJson) {
+                                        let gj = null;
+                                        try { gj = JSON.parse(item.thayDoiGeoJson); } catch {}
+                                        if (gj && gj.type && gj.type !== 'GeometryCollection') {
+                                            const layer = L.geoJSON(gj, {
+                                                style: { color: '#e53935', weight: 2, fillOpacity: 0.3 }
+                                            }).addTo(map);
+                                            layer.bindPopup(`<b>${item.tenDonVi}</b><br>Vùng thay đổi`);
+                                            spatialLayers.push(layer);
+                                        }
+                                    }
+                                });
+                                alert('Đã hiển thị vùng giao (xanh lá) và vùng thay đổi (đỏ) trên bản đồ. Click vào vùng để xem diện tích.');
+                            } catch (e) {
+                                alert('Lỗi phân tích không gian!');
+                            }
+                        });
                 // In bản đồ
                 document.getElementById('btn-print-map').addEventListener('click', function() {
                     window.print();
